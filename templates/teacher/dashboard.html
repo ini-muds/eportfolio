@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}教員ダッシュボード{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>ようこそ、{{ current_user.full_name }}先生</h1>
+        
+        <!-- 学生一覧パネル -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">学生一覧</h3>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>学籍番号</th>
+                                <th>氏名</th>
+                                <th>所属</th>
+                                <th>最終活動日</th>
+                                <th>記録件数</th>
+                                <th>フィードバック</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            {% set recent_record = student.records|sort(attribute='created_at')|last if student.records else None %}
+                            <tr>
+                                <td>{{ student.student_id }}</td>
+                                <td>{{ student.full_name }}</td>
+                                <td>{{ student.department }}</td>
+                                <td>
+                                    {% if recent_record %}
+                                        {{ recent_record.created_at.strftime('%Y年%m月') }}
+                                    {% else %}
+                                        未記録
+                                    {% endif %}
+                                </td>
+                                <td>{{ student.records|length }}</td>
+                                <td>
+                                    {% set needs_feedback = student.records|selectattr('feedback', 'none')|list|length %}
+                                    {% if needs_feedback > 0 %}
+                                        <span class="label label-warning">{{ needs_feedback }}件</span>
+                                    {% else %}
+                                        <span class="label label-default">0件</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('view_records', student_id=student.id) }}"
+                                       class="btn btn-info btn-sm">記録を見る</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計情報パネル -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">活動統計</h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h4>カテゴリー別記録数</h4>
+                        <ul class="list-group">
+                            {% set categories = {
+                                'daily': '日常学習',
+                                'research': '研究活動',
+                                'project': 'プロジェクト',
+                                'internship': 'インターン',
+                                'competition': 'コンペ・大会',
+                                'achievement': '成果・実績'
+                            } %}
+                            {% for category, label in categories.items() %}
+                            {% set count = namespace(value=0) %}
+                            {% for student in students %}
+                                {% for record in student.records %}
+                                    {% if record.category == category %}
+                                        {% set count.value = count.value + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            <li class="list-group-item">
+                                <span class="label label-{{ category }}">{{ label }}</span>
+                                <span class="badge">{{ count.value }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h4>フィードバック状況</h4>
+                        {% set total_records = namespace(value=0) %}
+                        {% set feedback_count = namespace(value=0) %}
+                        {% for student in students %}
+                            {% set total_records.value = total_records.value + student.records|length %}
+                            {% for record in student.records %}
+                                {% if record.feedback %}
+                                    {% set feedback_count.value = feedback_count.value + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                        <div class="well">
+                            <p>未フィードバック: 
+                                <strong>{{ total_records.value - feedback_count.value }}</strong>
+                            </p>
+                            <p>フィードバック済み: 
+                                <strong>{{ feedback_count.value }}</strong>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h4>最近の活動</h4>
+                        {% set all_records = [] %}
+                        {% for student in students %}
+                            {% for record in student.records %}
+                                {% set all_records = all_records + [record] %}
+                            {% endfor %}
+                        {% endfor %}
+                        {% set recent_records = all_records|sort(attribute='created_at', reverse=true) %}
+                        {% if recent_records %}
+                        <ul class="list-group">
+                            {% for record in recent_records|batch(5)|first %}
+                            <li class="list-group-item">
+                                {{ record.student.full_name }} - {{ record.title }}
+                                <br>
+                                <small>{{ record.created_at.strftime('%Y年%m月%d日') }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p>最近の活動はありません</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+<!-- templates/student/public_profile.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ student.full_name }} のプロフィール{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ student.full_name }} のプロフィール</h2>
+
+    <!-- プロフィール情報 -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">{{ student.full_name }}</h3>
+                </div>
+                <div class="panel-body text-center">
+                    {% if student.profile_photo %}
+                        <img src="{{ url_for('static', filename=student.profile_photo) }}" 
+                             alt="プロフィール写真" class="profile-photo">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/default-profile.png') }}" 
+                             alt="デフォルト写真" class="profile-photo">
+                    {% endif %}
+                    <p>{{ student.department }}</p>
+                </div>
+            </div>
+
+            {% if student.skills_and_interests %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>スキル・興味</h4>
+                </div>
+                <div class="panel-body">
+                    <div class="skill-tags">
+                        {% for skill in student.skills_and_interests.split(',') %}
+                            <span class="label label-info">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if student.current_goal %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>現在の目標</h4>
+                </div>
+                <div class="panel-body">
+                    <p>{{ student.current_goal }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if student.desired_job %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>希望職種</h4>
+                </div>
+                <div class="panel-body">
+                    <p>{{ student.desired_job }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if student.github_url or student.portfolio_url %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>リンク</h4>
+                </div>
+                <div class="panel-body">
+                    {% if student.github_url %}
+                        <a href="{{ student.github_url }}" target="_blank" class="btn btn-default btn-block">
+                            <i class="fa fa-github"></i> GitHub
+                        </a>
+                    {% endif %}
+                    {% if student.portfolio_url %}
+                        <a href="{{ student.portfolio_url }}" target="_blank" class="btn btn-default btn-block">
+                            <i class="fa fa-globe"></i> ポートフォリオサイト
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 活動記録一覧 -->
+        <div class="col-md-8">
+            <h3>活動記録</h3>
+            {% if records %}
+                <ul class="list-group">
+                    {% for record in records %}
+                        <li class="list-group-item">
+                            <h4>{{ record.title }}</h4>
+                            <p><strong>カテゴリ:</strong> {{ record.category }}</p>
+                            <p><strong>日付:</strong> {{ record.learning_date.strftime('%Y-%m') }}
+                                {% if record.end_date %} - {{ record.end_date.strftime('%Y-%m') }}{% endif %}
+                            </p>
+                            <p><strong>場所:</strong> {{ record.location or '場所未定' }}</p>
+                            <p>{{ record.content | truncate(100) }}</p>
+                            <a href="{{ url_for('public_record_detail', record_id=record.id) }}" class="btn btn-info btn-sm">詳細を見る</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>活動記録がありません。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

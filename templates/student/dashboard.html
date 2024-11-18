@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}学生ダッシュボード{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <!-- プロフィールパネル -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">プロフィール</h3>
+            </div>
+            <div class="panel-body">
+                <div class="text-center">
+                    {% if current_user.profile_photo %}
+                        <img src="{{ url_for('static', filename=current_user.profile_photo) }}" 
+                             alt="プロフィール写真" class="profile-photo">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/default-profile.png') }}" 
+                             alt="デフォルト写真" class="profile-photo">
+                    {% endif %}
+                    <h3>{{ current_user.full_name }}</h3>
+                    <p>{{ current_user.department }}</p>
+                    <a href="{{ url_for('edit_profile') }}" class="btn btn-primary btn-sm">
+                        <i class="glyphicon glyphicon-edit"></i> プロフィール編集
+                    </a>
+                </div>
+
+                <hr>
+
+                {% if current_user.current_goal %}
+                <div class="profile-section">
+                    <h4>現在の目標</h4>
+                    <p>{{ current_user.current_goal }}</p>
+                </div>
+                {% endif %}
+
+                {% if current_user.desired_job %}
+                <div class="profile-section">
+                    <h4>希望職種</h4>
+                    <p>{{ current_user.desired_job }}</p>
+                </div>
+                {% endif %}
+
+                {% if current_user.skills_and_interests %}
+                <div class="profile-section">
+                    <h4>スキル・興味</h4>
+                    <div class="skill-tags">
+                        {% for skill in current_user.skills_and_interests.split(',') %}
+                            <span class="label label-info">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if current_user.github_url or current_user.portfolio_url %}
+                <div class="profile-section">
+                    <h4>リンク</h4>
+                    {% if current_user.github_url %}
+                        <a href="{{ current_user.github_url }}" target="_blank" class="btn btn-default btn-block">
+                            <i class="fa fa-github"></i> GitHub
+                        </a>
+                    {% endif %}
+                    {% if current_user.portfolio_url %}
+                        <a href="{{ current_user.portfolio_url }}" target="_blank" class="btn btn-default btn-block">
+                            <i class="fa fa-globe"></i> ポートフォリオサイト
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- 最近の学習記録 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">最近の学習記録</h3>
+            </div>
+            <div class="panel-body">
+                {% if records %}
+                    <div class="list-group">
+                    {% for record in records %}
+                        <a href="{{ url_for('edit_record', id=record.id) }}" class="list-group-item">
+                            <h4 class="list-group-item-heading">{{ record.title }}</h4>
+                            <p class="list-group-item-text">
+                                <span class="label label-{{ record.category }}">{{ record.category }}</span>
+                                {{ record.learning_date.strftime('%Y年%m月') }}
+                                {% if record.end_date %}
+                                    ～ {{ record.end_date.strftime('%Y年%m月') }}
+                                {% endif %}
+                            </p>
+                            {% if record.feedback %}
+                                <div class="feedback-summary">
+                                    <span class="label label-success">フィードバックあり</span>
+                                </div>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                    </div>
+                    <div class="text-right">
+                        <a href="{{ url_for('view_records') }}" class="btn btn-default">すべての記録を見る</a>
+                        <a href="{{ url_for('new_record') }}" class="btn btn-primary">新規記録作成</a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        記録がありません。<a href="{{ url_for('new_record') }}" class="btn btn-primary btn-sm">最初の記録を作成</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 活動統計 -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">活動統計</h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>カテゴリー別活動数</h4>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>月別活動推移</h4>
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 活動カテゴリー別データの準備
+    const categoryData = {
+        labels: ['日常学習', '研究活動', 'プロジェクト', 'インターン', 'その他'],
+        values: [
+            {{ records|selectattr('category', 'equalto', 'daily')|list|length }},
+            {{ records|selectattr('category', 'equalto', 'research')|list|length }},
+            {{ records|selectattr('category', 'equalto', 'project')|list|length }},
+            {{ records|selectattr('category', 'equalto', 'internship')|list|length }},
+            {{ records|selectattr('category', 'equalto', 'other')|list|length }}
+        ],
+        colors: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff']
+    };
+
+    // カテゴリー別グラフの描画
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: categoryData.labels,
+            datasets: [{
+                data: categoryData.values,
+                backgroundColor: categoryData.colors
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // 月別データの準備
+    const monthlyData = new Array(12).fill(0);
+    {% for record in records %}
+        {% if record.learning_date %}
+            monthlyData[{{ record.learning_date.month - 1 }}]++;
+        {% endif %}
+    {% endfor %}
+
+    // 月別活動推移グラフの描画
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+            labels: ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'],
+            datasets: [{
+                label: '活動数',
+                data: monthlyData,
+                borderColor: '#36a2eb',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

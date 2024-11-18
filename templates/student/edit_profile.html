@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}プロフィール編集{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">プロフィール編集</h3>
+            </div>
+            <div class="panel-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <!-- プロフィール写真 -->
+                    <div class="form-group text-center">
+                        <div class="current-photo">
+                            {% if current_user.profile_photo %}
+                                <img src="{{ url_for('static', filename=current_user.profile_photo) }}" 
+                                     alt="現在のプロフィール写真" 
+                                     class="img-circle profile-photo">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/default-profile.png') }}" 
+                                     alt="デフォルトプロフィール写真" 
+                                     class="img-circle profile-photo">
+                            {% endif %}
+                        </div>
+                        <label for="profile_photo" class="btn btn-default">
+                            写真を変更
+                            <input type="file" id="profile_photo" name="profile_photo" 
+                                   accept="image/*" style="display: none;">
+                        </label>
+                        <p class="help-block">推奨: 500x500px以上の正方形画像</p>
+                    </div>
+
+                    <!-- 基本情報 -->
+                    <h4 class="section-title">基本情報</h4>
+                    
+
+                    <div class="form-group">
+                        <label for="desired_job">希望職種</label>
+                        <input type="text" class="form-control" id="desired_job" name="desired_job"
+                               value="{{ current_user.desired_job or '' }}"
+                               placeholder="例: データサイエンティスト、ソフトウェアエンジニアなど">
+                    </div>
+
+                    <!-- 詳細情報 -->
+                    <h4 class="section-title">詳細情報</h4>
+                    <div class="form-group">
+                        <label for="current_goal">現在の目標</label>
+                        <textarea class="form-control" id="current_goal" name="current_goal" rows="3"
+                                 placeholder="現在の目標や達成したいことを記入してください">{{ current_user.current_goal or '' }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="self_introduction">自己紹介</label>
+                        <textarea class="form-control" id="self_introduction" name="self_introduction" rows="5"
+                                 placeholder="自己紹介を記入してください">{{ current_user.self_introduction or '' }}</textarea>
+                        <p class="help-block">学びたいこと、興味のある分野、将来の展望などを自由に記入してください</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="skills_and_interests">スキル・興味（カンマ区切りで入力）</label>
+                        <input type="text" class="form-control" id="skills_and_interests" name="skills_and_interests"
+                               value="{{ current_user.skills_and_interests or '' }}"
+                               placeholder="例: Python, データ分析, 機械学習, ウェブ開発">
+                        <div id="skills-preview" class="skills-preview"></div>
+                    </div>
+
+                    <!-- 外部リンク -->
+                    <h4 class="section-title">外部リンク</h4>
+                    <div class="form-group">
+                        <label for="github_url">GitHubプロフィール</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><i class="fa fa-github"></i></span>
+                            <input type="url" class="form-control" id="github_url" name="github_url"
+                                   value="{{ current_user.github_url or '' }}"
+                                   placeholder="https://github.com/username">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="form-group text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">更新</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-default btn-lg">キャンセル</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// プロフィール写真プレビュー
+document.getElementById('profile_photo').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.querySelector('.profile-photo').src = e.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+});
+
+// スキルタグのプレビュー
+document.getElementById('skills_and_interests').addEventListener('input', function(e) {
+    const preview = document.getElementById('skills-preview');
+    const skills = e.target.value.split(',').map(skill => skill.trim()).filter(skill => skill);
+    
+    preview.innerHTML = skills.map(skill => 
+        `<span class="label label-info">${skill}</span>`
+    ).join(' ');
+});
+
+// 初期表示時のスキルタグプレビュー
+document.getElementById('skills_and_interests').dispatchEvent(new Event('input'));
+</script>
+{% endblock %}

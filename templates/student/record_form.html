@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{% if record %}学習・活動記録の編集{% else %}新規学習・活動記録{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">{% if record %}学習・活動記録の編集{% else %}新規学習・活動記録{% endif %}</h3>
+            </div>
+            <div class="panel-body">
+                <form method="POST" enctype="multipart/form-data" data-autosave="record-form">
+                    <div class="form-group">
+                        <label for="category">活動カテゴリー</label>
+                        <select class="form-control" id="category" name="category" required>
+                            <optgroup label="学習活動">
+                                <option value="daily" {% if record and record.category == 'daily' %}selected{% endif %}>日常の学習</option>
+                                <option value="research" {% if record and record.category == 'research' %}selected{% endif %}>研究活動</option>
+                                <option value="experiment" {% if record and record.category == 'experiment' %}selected{% endif %}>実験・実習</option>
+                                <option value="presentation" {% if record and record.category == 'presentation' %}selected{% endif %}>発表・報告</option>
+                            </optgroup>
+                            <optgroup label="課外活動">
+                                <option value="project" {% if record and record.category == 'project' %}selected{% endif %}>プロジェクト活動</option>
+                                <option value="competition" {% if record and record.category == 'competition' %}selected{% endif %}>コンペティション・大会</option>
+                                <option value="volunteer" {% if record and record.category == 'volunteer' %}selected{% endif %}>ボランティア活動</option>
+                                <option value="club" {% if record and record.category == 'club' %}selected{% endif %}>サークル・部活動</option>
+                            </optgroup>
+                            <optgroup label="キャリア開発">
+                                <option value="internship" {% if record and record.category == 'internship' %}selected{% endif %}>インターンシップ</option>
+                                <option value="jobhunting" {% if record and record.category == 'jobhunting' %}selected{% endif %}>就職活動</option>
+                                <option value="certification" {% if record and record.category == 'certification' %}selected{% endif %}>資格・検定</option>
+                                <option value="skill" {% if record and record.category == 'skill' %}selected{% endif %}>スキル開発</option>
+                            </optgroup>
+                            <optgroup label="成果・実績">
+                                <option value="award" {% if record and record.category == 'award' %}selected{% endif %}>受賞・表彰</option>
+                                <option value="publication" {% if record and record.category == 'publication' %}selected{% endif %}>論文・発表</option>
+                                <option value="achievement" {% if record and record.category == 'achievement' %}selected{% endif %}>その他の成果</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="title">タイトル</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ record.title if record else '' }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="period_type">期間</label>
+                        <select class="form-control" id="period_type" name="period_type">
+                            <option value="single" {% if record and not record.end_date %}selected{% endif %}>単月</option>
+                            <option value="range" {% if record and record.end_date %}selected{% endif %}>期間</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="single_date_group">
+                        <label for="learning_date">実施年月</label>
+                        <input type="month" class="form-control" id="learning_date" name="learning_date"
+                               value="{{ record.learning_date.strftime('%Y-%m') if record else '' }}" required>
+                    </div>
+
+                    <div class="form-group" id="date_range_group" style="display: none;">
+                        <label>実施期間</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="month" class="form-control" id="start_date" name="start_date"
+                                       value="{{ record.learning_date.strftime('%Y-%m') if record else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="month" class="form-control" id="end_date" name="end_date"
+                                       value="{{ record.end_date.strftime('%Y-%m') if record and record.end_date else '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location">実施場所</label>
+                        <input type="text" class="form-control" id="location" name="location" 
+                               value="{{ record.location if record else '' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="content">活動内容</label>
+                        <textarea class="form-control" id="content" name="content" rows="5" required>{{ record.content if record else '' }}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="achievement">成果・得られたもの</label>
+                        <textarea class="form-control" id="achievement" name="achievement" rows="3">{{ record.achievement if record else '' }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reflection">振り返り・今後の課題</label>
+                        <textarea class="form-control" id="reflection" name="reflection" rows="3">{{ record.reflection if record else '' }}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="skills">関連スキル・キーワード（カンマ区切りで入力）</label>
+                        <input type="text" class="form-control" id="skills" name="skills" 
+                               value="{{ record.skills if record else '' }}"
+                               placeholder="例：Python, データ分析, チームワーク, プレゼンテーション">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="file">添付ファイル（作品、証明書、報告書など）</label>
+                        <input type="file" class="form-control" id="file" name="file" multiple>
+                        {% if record and record.attachments %}
+                            <div class="current-attachments">
+                                <h4>現在の添付ファイル：</h4>
+                                {% for attachment in record.attachments %}
+                                    <p>
+                                        {{ attachment.filename }}
+                                        <a href="#" class="text-danger delete-attachment" 
+                                           data-id="{{ attachment.id }}"
+                                           data-record-id="{{ record.id }}">
+                                            <i class="glyphicon glyphicon-trash"></i> 削除
+                                        </a>
+                                    </p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if current_user.is_teacher() and record %}
+                    <div class="form-group">
+                        <label for="feedback">フィードバック</label>
+                        <textarea class="form-control" id="feedback" name="feedback" rows="4">{{ record.feedback if record else '' }}</textarea>
+                    </div>
+                    {% endif %}
+
+                    {% if record and record.feedback %}
+                        <div class="feedback-section">
+                            <h4>教員からのフィードバック</h4>
+                            <p>{{ record.feedback }}</p>
+                            <small>フィードバック者：{{ record.feedback_teacher.full_name }} ({{ record.feedback_date.strftime('%Y年%m月%d日') }})</small>
+                        </div>
+                    {% endif %}
+                    
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-default">キャンセル</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('period_type').addEventListener('change', function() {
+    var singleDateGroup = document.getElementById('single_date_group');
+    var dateRangeGroup = document.getElementById('date_range_group');
+    
+    if (this.value === 'single') {
+        singleDateGroup.style.display = 'block';
+        dateRangeGroup.style.display = 'none';
+    } else {
+        singleDateGroup.style.display = 'none';
+        dateRangeGroup.style.display = 'block';
+    }
+});
+
+// 初期表示時の設定
+document.getElementById('period_type').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

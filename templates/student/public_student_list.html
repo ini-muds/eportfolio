@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}学生一覧{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 検索パネル -->
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">学生検索</h3>
+        </div>
+        <div class="panel-body">
+            <form id="student-search-form">
+                <div class="form-group">
+                    <textarea 
+                        id="search-query" 
+                        class="form-control" 
+                        rows="3" 
+                        placeholder="求める人材像を入力してください。例: Pythonでウェブアプリケーションを開発できる学生を探しています。チームでの開発経験があり、コミュニケーション能力の高い方が望ましいです。"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="glyphicon glyphicon-search"></span> 検索
+                </button>
+            </form>
+
+            <!-- 検索結果表示領域 -->
+            <div id="search-results" style="display: none; margin-top: 20px;">
+                <div id="search-error" class="alert alert-danger" style="display: none;"></div>
+                <div id="results-list" class="list-group"></div>
+            </div>
+
+            <!-- ローディング表示 -->
+            <div id="loading" class="text-center" style="display: none; margin-top: 20px;">
+                <span class="glyphicon glyphicon-refresh" style="animation: spin 1s infinite linear;"></span>
+                検索中...
+            </div>
+        </div>
+    </div>
+
+    <!-- 全学生一覧 -->
+    <h2>全学生一覧</h2>
+    <div class="list-group">
+        {% for student in students %}
+            <a href="{{ url_for('public_student_profile', student_id=student.id) }}" 
+               class="list-group-item">
+                <div class="media">
+                    {% if student.profile_photo %}
+                    <div class="media-left">
+                        <img src="{{ url_for('static', filename=student.profile_photo) }}" 
+                             alt="{{ student.full_name }}"
+                             class="media-object img-circle"
+                             style="width: 50px; height: 50px; object-fit: cover;">
+                    </div>
+                    {% endif %}
+                    <div class="media-body">
+                        <h4 class="media-heading">{{ student.full_name }}</h4>
+                        {% if student.department %}
+                            <span class="text-muted">{{ student.department }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.skill-badge {
+    display: inline-block;
+    margin: 2px;
+    padding: 3px 8px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+}
+.match-reason {
+    margin: 8px 0;
+    color: #666;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#student-search-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const query = $('#search-query').val().trim();
+        if (!query) return;
+
+        const $button = $(this).find('button');
+        const $loading = $('#loading');
+        const $results = $('#search-results');
+        const $error = $('#search-error');
+        const $resultsList = $('#results-list');
+
+        // リクエスト開始時のUI更新
+        $button.prop('disabled', true);
+        $loading.show();
+        $results.hide();
+        $error.hide();
+
+        // APIリクエスト
+        $.ajax({
+            url: '/api/student-search',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ query: query }),
+            success: function(response) {
+                $resultsList.empty();
+                
+                response.recommendations.forEach(function(student) {
+                    const skillsHtml = student.skills.map(skill => 
+                        `<span class="skill-badge">${skill}</span>`
+                    ).join(' ');
+
+                    const studentHtml = `
+                        <div class="list-group-item">
+                            <div class="media">
+                                ${student.profile_photo ? `
+                                    <div class="media-left">
+                                        <img src="${student.profile_photo}" 
+                                             alt="${student.full_name}" 
+                                             class="media-object img-circle"
+                                             style="width: 50px; height: 50px; object-fit: cover;">
+                                    </div>
+                                ` : ''}
+                                <div class="media-body">
+                                    <h4 class="media-heading">${student.full_name}</h4>
+                                    <div>${student.department || ''}</div>
+                                    <p class="match-reason">${student.match_reason}</p>
+                                    <div>${skillsHtml}</div>
+                                    <a href="/profile/${student.id}" 
+                                       class="btn btn-default btn-xs" style="margin-top: 5px;">
+                                        詳細を見る
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $resultsList.append(studentHtml);
+                });
+
+                $results.show();
+            },
+            error: function(xhr) {
+                let errorMsg = '検索中にエラーが発生しました';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMsg = response.error;
+                    }
+                } catch (e) {}
+                
+                $error.text(errorMsg).show();
+                $results.show();
+            },
+            complete: function() {
+                $button.prop('disabled', false);
+                $loading.hide();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
